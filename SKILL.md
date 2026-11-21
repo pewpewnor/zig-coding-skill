@@ -38,10 +38,12 @@ Keep module roots thin and exports curated. Inspect functions around 60 lines an
 
 - Prefer `var value: Type = try .init(...)` when inferred initialization is supported. Use literals for trivial non-owning structs.
 - Use `const` unless mutable storage or reassignment is needed. Use `*const Self` for nonmutating methods and `*Self` for mutation.
+- Never allocate or free the receiver itself inside struct lifecycle methods. Return `Self` from `init`, or initialize caller-provided `*Self` storage when a stable address is required. The caller owns the struct storage and is responsible for freeing it if allocated; methods may allocate and release owned fields.
 - Successful initialization establishes invariants; failed initialization releases partial resources. Register cleanup immediately: `defer` for scope-owned resources, `errdefer` for ownership transferred on success.
 - Give every allocation and native resource an owner and release point. Retain the selected allocator until allocations and deferred users are finished. Copying an owning value does not clone it.
 - Specify owned versus borrowed returns and what invalidates borrows. Stable IDs do not imply stable addresses. Scratch allocations must not escape their reset boundary.
-- Release resources before ending struct `deinit()` with `self.* = undefined`; save return values before invalidation. Destruction is not automatically idempotent.
+- Every struct `deinit()` must release owned resources and end cleanup with `self.* = undefined`, including wrappers and test fixtures. Save return values before invalidation and return them afterward. Destruction is not automatically idempotent.
+- Prefer direct `deinit`, container cloning, or value copies. Use `deep.destroy` and `deep.clone` only when recursive ownership traversal is needed, such as nested owning lists; inline values need no recursive cleanup or cloning.
 - Never read `undefined` storage before initialization. Localize unsafe casts and ABI adaptation behind explicit invariants.
 
 ## Safety and errors
